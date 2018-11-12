@@ -1,6 +1,14 @@
 library(tidyverse)
 library(here)
 library(readxl)
+library(tigris)
+library(janitor)
+library(rio)
+
+
+# Kindergarten Readiness --------------------------------------------------
+
+
 
 var_names <- c("county",
                "district_id",
@@ -23,9 +31,34 @@ var_names <- c("county",
                "literacy_letter_sound",
                "literacy_letter_sound_n")
 
-portland_districts 
+
 
 kreadiness <- read_excel(here("data-raw", "k-readiness.xlsx"),
                          skip = 7,
                          col_names = var_names,
-                         na = "*")
+                         na = "*") %>% 
+     filter(county == "Multnomah")
+
+
+
+
+# General Info About Schools --------------------------------------------
+
+
+multco_districts <- read_excel(here("data-raw", "oregon-schools.xlsx"),
+                            sheet = 2) %>% 
+     clean_names() %>% 
+     filter(county == "Multnomah")
+
+
+multco_schools <- read_excel(here("data-raw", "oregon-schools.xlsx"),
+                             sheet = 3) %>% 
+     clean_names() %>% 
+     filter(district %in% multco_districts$district) %>% 
+     filter(x2017_18_kindergarten > 0)
+
+
+
+# School District Shapefiles ----------------------------------------------
+
+

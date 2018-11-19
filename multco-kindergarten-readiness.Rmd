@@ -1,9 +1,7 @@
 ---
 title: "Multnomah County Schools Kindergarten Readiness"
 author: "David Keyes"
-output: html_document
-editor_options: 
-  chunk_output_type: console
+output: radix::radix_article
 ---
 
 ```{r setup, include=FALSE}
@@ -20,16 +18,8 @@ library(tinter)
 
 # Colors
 
-tfff_dark_green <- "#265142"
-tfff_light_green <- "#B5CC8E"
-tfff_orange <- "#e65100"
-tfff_yellow <- "#FBC02D"
-tfff_blue <- "#283593"
-tfff_red <- "#B71C1C"
-tfff_brown <- "#51261C"
-tfff_dark_gray <- "#545454"
-tfff_medium_gray <- "#a8a8a8"
-tfff_light_gray <- "#eeeeee"
+dk_blue <- "#004c97"
+dk_orange <- "#DD8233"
 
 
 
@@ -40,9 +30,58 @@ multco_schools <- read_csv(here::here("data-clean", "multco-schools.csv")) %>%
 multco_shapefile <- st_read(here::here("data-clean", "multco-shapefile.shp"))
 poverty_shapefile <- st_read(here::here("data-clean", "poverty-shapefile.shp"))
 
+tmap_mode("view")
+
 ```
 
+```{r include = F}
+
+approaches_mean <- multco_schools %>% 
+     summarize(score = mean(approaches_total)) %>% 
+     pull(score) %>% 
+     round(1)
+
+approaches <- multco_schools %>% 
+     select(school,
+            district,
+            approaches_total) %>% 
+     mutate(quartile = ntile(approaches_total, 4)) %>% 
+     set_names(c("School", "District", "Score", "Quartile", "geometry")) %>% 
+     mutate(label = str_glue("Score: {Score} (Average: {approaches_mean})"))
+
+math_mean <- multco_schools %>% 
+     summarize(score = mean(math_number)) %>% 
+     pull(score) %>% 
+     round(1)
+
+math <- multco_schools %>% 
+      select(school,
+            district,
+            math_number) %>% 
+     mutate(quartile = ntile(math_number, 4)) %>% 
+     set_names(c("School", "District", "Score", "Quartile", "geometry")) %>% 
+     mutate(label = str_glue("Score: {Score} (Average: {math_mean})"))
+
+literacy_mean <- multco_schools %>% 
+     summarize(score = mean(literacy_letter_sound)) %>% 
+     pull(score) %>% 
+     round(1)
+
+literacy <- multco_schools %>% 
+      select(school,
+            district,
+            literacy_letter_sound) %>% 
+     mutate(quartile = ntile(literacy_letter_sound, 4)) %>% 
+     set_names(c("School", "District", "Score", "Quartile", "geometry")) %>% 
+     mutate(label = str_glue("Score: {Score} (Average: {literacy_mean})"))
+
+```
+
+
 # Static
+
+
+
 
 
 
@@ -60,7 +99,7 @@ kreadiness_base_plot <- function () {
           theme_void() +
           # scale_color_viridis_c(option = "B",
           #                       direction = -1) +
-          scale_color_gradientn(colours = tinter(tfff_dark_green,
+          scale_color_gradientn(colours = tinter(dk_blue,
                                                  direction = "both")) +
           labs(color = "") +
           theme(legend.position = "bottom")
@@ -70,21 +109,29 @@ kreadiness_base_plot <- function () {
 
 ### Approaches
 
-```{r}
+```{r layout="l-screen-inset", fig.height=5}
 
-approaches <- multco_schools %>% 
-     select(approaches_total) %>% 
-     mutate(quartile = ntile(approaches_total, 4)) 
-
-kreadiness_base_plot() +
-     geom_sf(data = filter(approaches, quartile != 1),
-             color = tfff_light_green,
-             alpha = .5) +
-     geom_sf(data = filter(approaches, quartile == 1),
-             color = tfff_dark_green,
+p <- kreadiness_base_plot() +
+     geom_sf_interactive(data = filter(approaches, quartile != 1),
+                         aes(tooltip = paste(school,
+                                             "<br>",
+                                             "Score: ",
+                                             approaches_total,
+                                             sep = "")),
+             color = dk_blue,
+             alpha = .2) +
+     geom_sf_interactive(data = filter(approaches, quartile == 1),
+                         aes(tooltip = paste(school,
+                                             "<br>",
+                                             "Score: ",
+                                             approaches_total,
+                                             sep = "")),
+             color = dk_blue,
              size = 3,
              alpha = .95) +
      coord_sf(datum = NA) 
+
+ggiraph(code = print(p))
 
 ```
 
@@ -92,19 +139,33 @@ kreadiness_base_plot() +
 
 ```{r}
 
-math <- multco_schools %>% 
-     select(math_number) %>% 
-     mutate(quartile = ntile(math_number, 4)) 
 
-kreadiness_base_plot() +
-     geom_sf(data = filter(math, quartile != 1),
-             color = tfff_light_green,
-             alpha = .5) +
-     geom_sf(data = filter(math, quartile == 1),
-             color = tfff_dark_green,
+
+p <- kreadiness_base_plot() +
+     geom_sf_interactive(data = filter(math, quartile != 1),
+                         aes(tooltip = paste(school,
+                                             "<br>",
+                                             "Score: ",
+                                             math_number,
+                                             sep = "")),
+             color = dk_blue,
+             alpha = .2) +
+     geom_sf_interactive(data = filter(math, quartile == 1),
+                         aes(tooltip = paste(school,
+                                             "<br>",
+                                             "Score: ",
+                                             math_number,
+                                             sep = "")),
+             color = dk_blue,
              size = 3,
              alpha = .95) +
      coord_sf(datum = NA) 
+
+ggiraph(code = print(p))
+
+
+
+
 
 
 
@@ -114,49 +175,189 @@ kreadiness_base_plot() +
 ### Literacy
 ```{r}
 
-kreadiness_base_plot() +
-     geom_sf(data = multco_schools,
-             aes(color = literacy_letter_sound),
-             size = 2.5) +
-     coord_sf(datum = NA)
+
+p <- kreadiness_base_plot() +
+     geom_sf_interactive(data = filter(literacy, quartile != 1),
+                         aes(tooltip = paste(school,
+                                             "<br>",
+                                             "Score: ",
+                                             literacy_letter_sound,
+                                             sep = "")),
+             color = dk_blue,
+             alpha = .2) +
+     geom_sf_interactive(data = filter(literacy, quartile == 1),
+                         aes(tooltip = paste(school,
+                                             "<br>",
+                                             "Score: ",
+                                             literacy_letter_sound,
+                                             sep = "")),
+             color = dk_blue,
+             size = 3,
+             alpha = .95) +
+     coord_sf(datum = NA) 
+
+ggiraph(code = print(p))
+
+
+
+
 ```
 
-## Heatmaps
+## Map Interactive
 
-```{r}
-temp <- as.tibble(multco_schools)
+### Approaches
 
-kreadiness_base_plot() +
-     geom_sf(data = multco_schools,
-             aes(color = literacy_letter_sound),
-             size = 2.5) +
-     geom_bin2d() +
-     coord_sf(datum = NA)
+```{r layout="l-screen-inset"}
+
+
+tm_basemap(leaflet::providers$CartoDB.Positron) +
+     tm_shape(filter(approaches, Quartile == 1)) +
+     tm_dots(col = dk_blue,
+             size = .1,
+             alpha = 1,
+             popup.vars = c("District", "label")) +
+          tm_shape(filter(approaches, Quartile != 1)) +
+     tm_dots(col = dk_blue,
+             size = .05,
+             popup.vars = c("District", "label"),
+             alpha = 0.5)
+```
+
+### Literacy
+
+```{r layout="l-screen-inset"}
+
+tm_basemap(leaflet::providers$CartoDB.Positron) +
+     tm_shape(filter(literacy, Quartile == 1)) +
+     tm_dots(col = dk_blue,
+             size = .1,
+             alpha = 1,
+             popup.vars = c("District", "label")) +
+          tm_shape(filter(literacy, Quartile != 1)) +
+     tm_dots(col = dk_blue,
+             size = .05,
+             popup.vars = c("District", "label"),
+             alpha = 0.5)
+```
+
+### Math
+
+```{r layout="l-screen-inset"}
+
+
+tm_basemap(leaflet::providers$CartoDB.Positron) +
+     tm_shape(filter(math, Quartile == 1)) +
+     tm_dots(col = dk_blue,
+             size = .1,
+             alpha = 1,
+             popup.vars = c("District", "label")) +
+          tm_shape(filter(math, Quartile != 1)) +
+     tm_dots(col = dk_blue,
+             size = .05,
+             popup.vars = c("District", "label"),
+             alpha = 0.5)
+```
+
+## Scatterplot
+
+### Approaches
+
+```{r layout="l-screen-inset"}
+
+
+p <- ggplot(multco_schools, aes(frl_pct, approaches_total)) +
+     geom_smooth(method = "lm",
+                 fill = "transparent",
+                 color = dk_orange,
+                 alpha = 0.5) +
+     geom_point_interactive(aes(tooltip = paste("<strong>",school,"</strong>",
+                                                "<br>",
+                                                district, 
+                                                "<br>",
+                                                "Score: ",
+                                                math_number,
+                                                "<br>",
+                                                "Percent Free and Reduced Lunch: ", 
+                                                round(frl_pct, 0),
+                                                sep = "")),
+                            alpha = 0.75,
+                            color = dk_blue) +
+     
+     scale_x_continuous(limits = c(0, 100)) +
+     scale_y_continuous(limits = c(0, 5)) +
+     theme_minimal() +
+     labs(x = "Free and Reduced Lunch",
+          y = "Score")
+
+ggiraph(code = print(p))
 ```
 
 
+### Math
 
-# Interactive
+```{r layout="l-screen-inset"}
 
-```{r}
 
-temp <- multco_schools %>% 
-     select(school, everything())
+p <- ggplot(multco_schools, aes(frl_pct, math_number)) +
+     geom_smooth(method = "lm",
+                 fill = "transparent",
+                 color = dk_orange,
+                 alpha = 0.5) +
+     geom_point_interactive(aes(tooltip = paste("<strong>",school,"</strong>",
+                                                "<br>",
+                                                district, 
+                                                "<br>",
+                                                "Score: ",
+                                                math_number,
+                                                "<br>",
+                                                "Percent Free and Reduced Lunch: ", 
+                                                round(frl_pct, 0),
+                                                sep = "")),
+                            alpha = 0.75,
+                            color = dk_blue) +
+     
+     scale_x_continuous(limits = c(0, 100)) +
+     scale_y_continuous(limits = c(0, 15)) +
+     theme_minimal() +
+     labs(x = "Free and Reduced Lunch",
+          y = "Score")
 
-tmap_mode("view")
-
-tm_shape(poverty_shapefile) +
-     tm_polygons(col = "estimate",
-                 palette = "Blues",
-                 popup.vars = c("Poverty Rate" = "estimate"),
-                 alpha = 0.3) +
-     tm_shape(temp) +
-     tm_dots(n = 5,
-             popup.vars = c("Math" = "math_number"),
-             palette = "-inferno",
-             col = "literacy_letter_sound") +
-     tm_layout(title = "Test")
+ggiraph(code = print(p))
 ```
+
+### Literacy
+
+```{r layout="l-screen-inset"}
+
+
+p <- ggplot(multco_schools, aes(frl_pct, literacy_letter_sound)) +
+     geom_smooth(method = "lm",
+                 fill = "transparent",
+                 color = dk_orange,
+                 alpha = 0.5) +
+     geom_point_interactive(aes(tooltip = paste("<strong>",school,"</strong>",
+                                                "<br>",
+                                                district, 
+                                                "<br>",
+                                                "Score: ",
+                                                math_number,
+                                                "<br>",
+                                                "Percent Free and Reduced Lunch: ", 
+                                                round(frl_pct, 0),
+                                                sep = "")),
+                            alpha = 0.75,
+                            color = dk_blue) +
+     
+     scale_x_continuous(limits = c(0, 100)) +
+     scale_y_continuous(limits = c(0, 20)) +
+     theme_minimal() +
+     labs(x = "Free and Reduced Lunch",
+          y = "Score")
+
+ggiraph(code = print(p))
+```
+
+
 
 
 
